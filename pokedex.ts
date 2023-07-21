@@ -8,17 +8,16 @@ import {PokemonDetail} from './PokemonDetail'
  * @param filter -- how we should order the records
  * @returns 
  */
-function getAllPokemon(pagesize: number = 50, pagenum: number = 0, filter: string = "id: asc"): PokemonSummary[]{
-    let rtnArr: PokemonSummary[] = [];
-    
-    fetch('https://beta.pokeapi.co/graphql/v1beta', {
+async function getAllPokemon(pagesize: number = 50, pagenum: number = 0, filter: string = "id: asc"): Promise<PokemonSummary[]>{
+    const arrayOfPokemon: PokemonSummary[] = [];
+    const res = await fetch('https://beta.pokeapi.co/graphql/v1beta', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({query: `
         query samplePokeAPIquery {
-            pokemon_v2_pokemon(limit: ${pagesize}, offset: ${(pagenum * pagesize)}, order_by: {${filter}}) {
+            pokemon_v2_pokemon(limit: ${pagesize}, offset: ${(pagenum * pagesize)}, where: {is_default: {_eq: true}}, order_by: {${filter}}) {
               name
               id
               pokemon_v2_pokemontypes {
@@ -29,40 +28,41 @@ function getAllPokemon(pagesize: number = 50, pagenum: number = 0, filter: strin
             }
           }
         `}),
-    })
-    .then((res) => res.json())
-    .then((result) => {
-        result.data.pokemon_v2_pokemon.forEach(element => {
-            let types: string[] = [];
-            element.pokemon_v2_pokemontypes.forEach(type => {
-                types.push(type.pokemon_v2_type.name);
-            });
-            let pm: PokemonSummary = {
-                id: element.id,
-                name: element.name,
-                sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${element.id}`,
-                type: types,
-            };
-            // console.log(pm);
-            rtnArr.push(pm);
-        });
     });
+    const result = await res.json();
 
-   
-    console.log(rtnArr);
-    return rtnArr;
+      result.data.pokemon_v2_pokemon.forEach(element => {
+        let types: string[] = [];
+        element.pokemon_v2_pokemontypes.forEach(type => {
+            types.push(type.pokemon_v2_type.name);
+        });
+        let pm: PokemonSummary = {
+            id: element.id,
+            name: element.name,
+            sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${element.id}`,
+            type: types,
+        };
+
+        arrayOfPokemon.push(pm);
+      });
+
+        
+    return arrayOfPokemon;
+
 }
 
-function getPokemon(id: number): PokemonDetail{
+
+async function getPokemon(id: number): Promise<PokemonDetail>{
     let returnPokemon: PokemonDetail = {};
-    fetch('https://beta.pokeapi.co/graphql/v1beta', {
+
+    const res = await fetch('https://beta.pokeapi.co/graphql/v1beta', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({query: `
         query samplePokeAPIquery {
-            pokemon_v2_pokemon(where: {id: {_eq: ${id}}}) {
+            pokemon_v2_pokemon(where: {id: {_eq: ${id}}, is_default:{_eq: true}}) {
               name
               id
               pokemon_v2_pokemonstats {
@@ -81,50 +81,48 @@ function getPokemon(id: number): PokemonDetail{
             }
           }
         `}),
-    })
-    .then((res) => res.json())
-    .then((result) => {
-        result.data.pokemon_v2_pokemon.forEach((el) => {
-            let types: string[] = [];
-            el.pokemon_v2_pokemontypes.forEach(type => {
-                types.push(type.pokemon_v2_type.name);
-            });
-            returnPokemon.name = el.name;
-            returnPokemon.id = el.id;
-            returnPokemon.sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${el.id}`;
-            returnPokemon.type = types;
-            returnPokemon.height = el.height;
-            returnPokemon.weight = el.weight;
-            returnPokemon.stats = {};
-            el.pokemon_v2_pokemonstats.forEach((stat) => {
-                switch(stat.pokemon_v2_stat.name){
-                    case 'hp':
-                        returnPokemon.stats.hp = stat.base_stat;
-                        break;
-                    case 'attack':
-                        returnPokemon.stats.attack = stat.base_stat;
-                        break;
-                    case 'special-defense':
-                        returnPokemon.stats.specialDefense = stat.base_stat;
-                        break;
-                    case 'special-attack':
-                        returnPokemon.stats.specialAttack = stat.base_stat;
-                        break;
-                    case 'speed':
-                        returnPokemon.stats.speed = stat.base_stat;
-                        break;
-                }   
-            })
-            console.log(returnPokemon);
-        })
-    })
+    });
+
+    const result = await res.json();
+    
+    result.data.pokemon_v2_pokemon.forEach((el) => {
+      let types: string[] = [];
+      el.pokemon_v2_pokemontypes.forEach(type => {
+          types.push(type.pokemon_v2_type.name);
+      });
+      returnPokemon.name = el.name;
+      returnPokemon.id = el.id;
+      returnPokemon.sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${el.id}`;
+      returnPokemon.type = types;
+      returnPokemon.height = el.height;
+      returnPokemon.weight = el.weight;
+      returnPokemon.stats = {};
+      el.pokemon_v2_pokemonstats.forEach((stat) => {
+          switch(stat.pokemon_v2_stat.name){
+              case 'hp':
+                  returnPokemon.stats.hp = stat.base_stat;
+                  break;
+              case 'attack':
+                  returnPokemon.stats.attack = stat.base_stat;
+                  break;
+              case 'special-defense':
+                  returnPokemon.stats.specialDefense = stat.base_stat;
+                  break;
+              case 'special-attack':
+                  returnPokemon.stats.specialAttack = stat.base_stat;
+                  break;
+              case 'speed':
+                  returnPokemon.stats.speed = stat.base_stat;
+                  break;
+          }   
+      });
+    });
+
     return returnPokemon;
 }
 
+let aop = getAllPokemon();
+aop.then((res) => console.log(res));
 
-// let testvar = getAllPokemon();
-
-// console.log(testvar);
-
-let testvar = getPokemon(1);
-console.log(testvar);
+// let testvar = getPokemon(1);
+// testvar.then((res) => console.log(res));
